@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 DHT Web Server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f7f7f7;
+        }
+        .card {
+            display: inline-block;
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .card-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        #temperature, #humidity {
+            font-size: 30px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ESP32 DHT Sensor Readings</h1>
+    <div class="card">
+        <p class="card-title"><i class="fas fa-thermometer-half"></i> Temperature</p>
+        <p id="temperature">-- °C</p>
+    </div>
+    <div class="card">
+        <p class="card-title"><i class="fas fa-tint"></i> Humidity</p>
+        <p id="humidity">-- %</p>
+    </div>
+    <script>
+        setInterval(() => {
+            fetch('/dht')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.temperature !== null) {
+                        document.getElementById('temperature').innerText = `${data.temperature} °C`;
+                    } else {
+                        document.getElementById('temperature').innerText = `Error`;
+                    }
+
+                    if (data.humidity !== null) {
+                        document.getElementById('humidity').innerText = `${data.humidity} %`;
+                    } else {
+                        document.getElementById('humidity').innerText = `Error`;
+                    }
+                })
+                .catch(err => console.error('Error:', err));
+        }, 2000); // Update every 2 seconds
+    </script>
+</body>
+</html>
