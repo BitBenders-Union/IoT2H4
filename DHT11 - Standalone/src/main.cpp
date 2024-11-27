@@ -1,13 +1,16 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <PubSubClient.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
 #include "LittleFS.h"
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
-#define DHTPIN GPIO_NUM_2
+#define DHTPIN 15
 #define DHTTYPE DHT11
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
@@ -31,7 +34,22 @@ void initLittleFS();
 void writeFile(fs::FS &fs, const char *path, const char *message);
 String readFile(fs::FS &fs, const char *path);
 bool initWiFi();
-void setupServer(bool isWiFiInitialized);
+void setupServer();
+void reconnect();
+
+const char* mqtt_server = "192.168.0.153";  // Raspberry Pi IP
+const int mqtt_port = 1883;                 // Default MQTT port
+const char* mqtt_user = "mosquitto";         // Optional: Your MQTT username
+const char* mqtt_pass = "dietpi";         // Optional: Your MQTT password
+const char* mqtt_client_id = "dht-11"; // Client ID for this ESP32
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP,"pool.ntp.org", 36000, 60000);
+
+
 
 void setup() {
     Serial.begin(115200);
@@ -48,42 +66,71 @@ void setup() {
     dht.humidity().getSensor(&sensor);
     delayMS = max(sensor.min_delay / 1000, 2000); // Minimum delay between reads
 
-    // Initialize Wi-Fi and set up the appropriate web server
-    if (initWiFi()) {
-        // Initialize server for Wi-Fi
-        setupServer(true);
-    } else {
-        // Initialize server for AP mode
-        setupServer(false);
+    if (!initWiFi()){
+        setupServer();
     }
+
+    // Setup MQTT
+    client.setServer(mqtt_server, mqtt_port);
+
+    // Initial connection to MQTT
+    reconnect();
+
+    timeClient.begin();
 
 }
 
+
 void loop() {
-    // Read DHT data periodically for debugging
     delay(delayMS);
+    timeClient.update();
 
+    // Ensure the MQTT connection is alive
+    if (!client.connected()) {
+        reconnect();
+    }
+    client.loop();
+
+    // Read temperature and humidity from the DHT sensor
     sensors_event_t event;
-
-    // Get temperature
     dht.temperature().getEvent(&event);
-    if (!isnan(event.temperature)) {
-        Serial.print("Temperature: ");
-        Serial.print(event.temperature);
-        Serial.println(" °C");
-    } else {
-        Serial.println("Failed to read temperature");
+    float temperatureValue = event.temperature;
+
+    dht.humidity().getEvent(&event);
+    float humidityValue = event.relative_humidity;
+
+    // Validate sensor readings
+    if (isnan(temperatureValue) || isnan(humidityValue)) {
+        Serial.println("Failed to read from DHT sensor!");
+        return;
     }
 
-    // Get humidity
-    dht.humidity().getEvent(&event);
-    if (!isnan(event.relative_humidity)) {
-        Serial.print("Humidity: ");
-        Serial.print(event.relative_humidity);
-        Serial.println(" %");
+    // Convert readings to String with one decimal point
+    String temperature = String(temperatureValue, 1);
+    String humidity = String(humidityValue, 1);
+
+    // Log the readings
+    Serial.print("Temperature: ");
+    Serial.print(temperature);
+    Serial.print("°C, Humidity: ");
+    Serial.print(humidity);
+    Serial.println("%");
+
+    // Log the current time
+    String currentTime = timeClient.getFormattedTime();
+    Serial.println("Time: " + currentTime);
+
+    // Create JSON payload to send
+    String payload = "{\"temperature\": " + temperature + ", \"humidity\": " + humidity + ", \"time\": \"" + currentTime + "\"}";
+
+    // Publish data to MQTT broker
+    if (client.publish("home/dht", payload.c_str())) {
+        Serial.println("Data sent to MQTT broker");
     } else {
-        Serial.println("Failed to read humidity");
+        Serial.println("Failed to send data to MQTT broker");
     }
+
+    // Wait before sending next reading
 }
 
 // Initialize LittleFS
@@ -155,30 +202,7 @@ bool initWiFi() {
 }
 
 // Configure the server to serve the correct page
-void setupServer(bool isWiFiInitialized) {
-    if (isWiFiInitialized) {
-        // Serve the main page if Wi-Fi is connected
-        server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(LittleFS, "/index.html", "text/html");
-        });
-
-        server.on("/dht", HTTP_GET, [](AsyncWebServerRequest *request) {
-            sensors_event_t event;
-
-            // Read temperature
-            dht.temperature().getEvent(&event);
-            String temperature = isnan(event.temperature) ? "null" : String(event.temperature, 1);
-
-            // Read humidity
-            dht.humidity().getEvent(&event);
-            String humidity = isnan(event.relative_humidity) ? "null" : String(event.relative_humidity, 1);
-
-            // Create JSON response
-            String json = "{\"temperature\": " + temperature + ", \"humidity\": " + humidity + "}";
-            request->send(200, "application/json", json);
-        });
-
-    } else {
+void setupServer() {
         WiFi.softAP("ESP-WIFI-MANAGER");
         IPAddress IP = WiFi.softAPIP();
         Serial.print("AP IP address: ");
@@ -205,7 +229,22 @@ void setupServer(bool isWiFiInitialized) {
             delay(1000);
             ESP.restart();
         });
-    }
 
     server.begin();
 }
+
+// MQTT reconnect function
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    if (client.connect(mqtt_client_id, mqtt_user, mqtt_pass)) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
+}
+
