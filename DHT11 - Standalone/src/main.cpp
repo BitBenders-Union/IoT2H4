@@ -22,13 +22,16 @@ AsyncWebServer server(80);
 // Parameter names for Wi-Fi credentials
 const char *PARAM_INPUT_1 = "ssid";
 const char *PARAM_INPUT_2 = "pass";
+const char *PARAM_INPUT_3 = "mqtt";
 
-// File paths to save Wi-Fi credentials
+// File paths to save credentials
 const char *ssidPath = "/ssid.txt";
 const char *passPath = "/pass.txt";
+const char *mqttPath = "/mqtt.txt";
 
 String ssid;
 String pass;
+String mqtt;
 
 void initLittleFS();
 void writeFile(fs::FS &fs, const char *path, const char *message);
@@ -58,13 +61,15 @@ void setup() {
     // Load saved Wi-Fi credentials
     ssid = readFile(LittleFS, ssidPath);
     pass = readFile(LittleFS, passPath);
+    mqtt = readFile(LittleFS, mqttPath);
+    mqtt_server = mqtt.c_str();
 
     // Initialize DHT sensor
     dht.begin();
     sensor_t sensor;
     dht.temperature().getSensor(&sensor);
     dht.humidity().getSensor(&sensor);
-    delayMS = max(sensor.min_delay / 1000, 2000); // Minimum delay between reads
+    delayMS = max(sensor.min_delay / 1000, 2000);
 
     if (!initWiFi()){
         setupServer();
@@ -130,7 +135,6 @@ void loop() {
         Serial.println("Failed to send data to MQTT broker");
     }
 
-    // Wait before sending next reading
 }
 
 // Initialize LittleFS
@@ -147,6 +151,9 @@ void initLittleFS() {
     }
     if (!LittleFS.exists(passPath)) {
         writeFile(LittleFS, passPath, "");
+    }
+    if(!LittleFS.exists(mqttPath)){
+        writeFile(LittleFS, mqttPath, "");
     }
 }
 
@@ -224,6 +231,12 @@ void setupServer() {
                     pass = p->value();
                     writeFile(LittleFS, passPath, pass.c_str());
                 }
+                else if (p->name() == PARAM_INPUT_3)
+                {
+                    mqtt = p->value();
+                    writeFile(LittleFS, mqttPath, mqtt.c_str());
+                }
+                
             }
             request->send(200, "text/plain", "Saved. Restarting...");
             delay(1000);
@@ -231,6 +244,9 @@ void setupServer() {
         });
 
     server.begin();
+    while(true){
+        delay(1000);
+    }
 }
 
 // MQTT reconnect function
