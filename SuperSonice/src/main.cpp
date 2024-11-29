@@ -16,7 +16,7 @@ const char* ssid = "E308";
 const char* password = "98806829";
 
 // MQTT settings
-const char* mqttServer = "192.168.0.153"; // Replace with your broker if needed
+const char* mqttServer = "192.168.0.153";
 const int mqttPort = 1883;
 const char* mqttTopic = "esp32/people_counter";
 const char* mqttUser = "mosquitto";   // MQTT username
@@ -37,7 +37,7 @@ struct tm timeinfo;
 
 float getSonar();
 void checkAndSleep();
-void logPersonDetection();
+void logPersonDetection(bool isSaveToCSV = false);
 void sendCSVData();
 bool connectToMQTT();
 void saveToCSV(String timestamp);
@@ -84,7 +84,18 @@ void loop() {
 
     // Check if a person is detected
     if (distance > 0 && distance < 200) { // Adjust threshold for your application
-        logPersonDetection();
+        if (WiFi.status() != WL_CONNECTED || !client.connected()) {
+            // If Wi-Fi or MQTT is disconnected, log the data to CSV
+            logPersonDetection(true);
+        } else {
+            // Otherwise, log the data directly via MQTT
+            logPersonDetection(false);
+        }
+    }
+
+    // Attempt to reconnect if disconnected
+    if (WiFi.status() == WL_CONNECTED && connectToMQTT()) {
+        sendCSVData(); // Send any saved data when connection is restored
     }
 
     delay(1000);
@@ -105,19 +116,21 @@ float getSonar() {
     return distance;
 }
 
-void logPersonDetection() {
+void logPersonDetection(bool isSaveToCSV) {
     if (getLocalTime(&timeinfo)) {
         char timestamp[20];
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-        // Save to SPIFFS
-        saveToCSV(String(timestamp));
-
-        // Send MQTT message
-        String payload = String("{\"time\":\"") + timestamp + "\",\"persons\":1}";
-        if (connectToMQTT()) {
-            client.publish(mqttTopic, payload.c_str());
-            Serial.println("MQTT message sent: " + payload);
+        if (isSaveToCSV) {
+            // Save the data to CSV
+            saveToCSV(String(timestamp));
+        } else {
+            // Send MQTT message
+            String payload = String("{\"time\":\"") + timestamp + "\",\"persons\":1}";
+            if (connectToMQTT()) {
+                client.publish(mqttTopic, payload.c_str());
+                Serial.println("MQTT message sent: " + payload);
+            }
         }
     }
 }
@@ -140,24 +153,25 @@ void saveToCSV(String timestamp) {
 }
 
 void sendCSVData() {
-    if (connectToMQTT()) {
-        File file = SPIFFS.open("/people_data.csv", FILE_READ);
-        if (!file) {
-            Serial.println("Failed to open file for reading");
-            return;
-        }
+    File file = SPIFFS.open("/people_data.csv", FILE_READ);
+    if (!file) {
+        Serial.println("No CSV file to send.");
+        return;
+    }
 
-        Serial.println("Sending CSV data...");
-        while (file.available()) {
-            String line = file.readStringUntil('\n');
+    Serial.println("Sending CSV data...");
+    while (file.available()) {
+        String line = file.readStringUntil('\n');
+        if (connectToMQTT()) {
             client.publish(mqttTopic, line.c_str());
             Serial.println("Sent line: " + line);
         }
-        file.close();
-
-        // Clear the file after sending
-        SPIFFS.remove("/people_data.csv");
     }
+    file.close();
+
+    // Clear the file after sending
+    SPIFFS.remove("/people_data.csv");
+    Serial.println("CSV data sent and file cleared.");
 }
 
 bool connectToMQTT() {
@@ -169,6 +183,7 @@ bool connectToMQTT() {
             } else {
                 Serial.print("Failed MQTT connection. Retrying in 5 seconds...");
                 delay(5000);
+                return false;
             }
         }
     }
