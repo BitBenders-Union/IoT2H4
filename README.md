@@ -19,3 +19,14 @@
   - Nginx (Webserver)
   - Flask (Micro web framework)
   - Python 3
+    
+## MQTT Broker Scripts
+Vi har 2 scripts til opsætning og håndtering af vores MQTT broker:
+- **Script 1**: [Beskrivelse af funktionalitet]
+- **Script 2**: [Beskrivelse af funktionalitet]
+- 
+
+## Kildekode DHT11 og ultrasonic sensors
+- LINK 1
+- Link 2
+
