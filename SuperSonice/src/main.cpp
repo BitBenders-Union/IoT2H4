@@ -4,16 +4,28 @@
 #include "time.h"
 #include "FS.h"
 #include "SPIFFS.h"
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
 
 #define trigPin 13
 #define echoPin 14
 #define MAX_DISTANCE 700
 
+AsyncWebServer server(80);
+
 #define uS_TO_S_FACTOR 1000000  // Conversion factor for microseconds to seconds
 
 // Wi-Fi credentials
-const char* ssid = "E308";
-const char* password = "98806829";
+const char* PARAM_INPUT_1 = "ssid";
+const char* PARAM_INPUT_2 = "pass";
+
+// const char* ssid = "E308";
+// const char* password = "98806829";
+String ssid;
+String password;
+
+//Path to saved wifi credentials
+const char* WIFI_CREDENTIALS_FILE  = "/wifi_credentials.txt";   
 
 // MQTT settings
 const char* mqttServer = "192.168.0.153";
@@ -41,6 +53,8 @@ void logPersonDetection(bool isSaveToCSV = false);
 void sendCSVData();
 bool connectToMQTT();
 void saveToCSV(String timestamp);
+void wiFiSetup();
+void startConfigPortal();
 
 void setup() {
     Serial.begin(115200);
@@ -54,16 +68,20 @@ void setup() {
     }
     Serial.println("SPIFFS mounted successfully.");
 
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(1000);
-        Serial.println("Connecting to WiFi...");
-    }
-    Serial.println("WiFi connected.");
+    if(!WiFi.begin(ssid, password))
+    {
+        wiFiSetup();
+    };
+    
+    // while (WiFi.status() != WL_CONNECTED) {
+    //     delay(1000);
+    //     Serial.println("Connecting to WiFi...");
+    // }
+    // Serial.println("WiFi connected.");
 
-    // Print the ESP32's IP address
-    Serial.print("ESP32 IP Address: ");
-    Serial.println(WiFi.localIP());
+    // // Print the ESP32's IP address
+    // Serial.print("ESP32 IP Address: ");
+    // Serial.println(WiFi.localIP());
 
     // Synchronize time using NTP
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -218,4 +236,73 @@ void checkAndSleep() {
         esp_sleep_enable_timer_wakeup((uint64_t)secondsToSleep * uS_TO_S_FACTOR);
         esp_deep_sleep_start();
     }
+}
+
+void wiFiSetup() {
+    // Read WiFi credentials from SPIFFS
+    File file = SPIFFS.open(WIFI_CREDENTIALS_FILE, FILE_READ);
+    if (file) {
+        ssid = file.readStringUntil('\n');
+        password = file.readStringUntil('\n');
+        ssid.trim();
+        password.trim();
+        file.close();
+    }
+
+    if (ssid.length() > 0) {
+        WiFi.begin(ssid.c_str(), password.c_str());
+
+        // Wait for connection
+        int attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+            delay(1000);
+            Serial.println("Connecting to WiFi...");
+            attempts++;
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("WiFi connected.");
+            Serial.print("IP Address: ");
+            Serial.println(WiFi.localIP());
+            return;
+        }
+    }
+
+    // If Wi-Fi not connected, start config portal
+    startConfigPortal();
+}
+
+void startConfigPortal() {
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP("ESP32-Config");
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/index.html", "text/html");
+    });
+
+    server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
+        String newSSID, newPassword;
+        if (request->hasParam("ssid", true)) {
+            newSSID = request->getParam("ssid", true)->value();
+        }
+        if (request->hasParam("password", true)) {
+            newPassword = request->getParam("password", true)->value();
+        }
+
+        File file = SPIFFS.open(WIFI_CREDENTIALS_FILE, FILE_WRITE);
+        if (file) {
+            file.println(newSSID);
+            file.println(newPassword);
+            file.close();
+            request->send(200, "text/plain", "Credentials saved. ESP32 will restart.");
+            delay(1000);
+            ESP.restart();
+        } else {
+            request->send(500, "text/plain", "Failed to save credentials");
+        }
+    });
+
+    server.begin();
+    Serial.println("Configuration portal started");
+    Serial.println("Connect to ESP32-Config and visit 192.168.4.1");
 }
