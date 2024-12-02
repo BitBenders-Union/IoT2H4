@@ -34,6 +34,8 @@ const char* mqttTopic = "esp32/people_counter";
 const char* mqttUser = "mosquitto";   // MQTT username
 const char* mqttPassword = "dietpi";  // MQTT password
 
+bool personDetected = false;
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -68,10 +70,8 @@ void setup() {
     }
     Serial.println("SPIFFS mounted successfully.");
 
-    if(!WiFi.begin(ssid, password))
-    {
-        wiFiSetup();
-    };
+    // WiFi.begin(ssid, password)
+    wiFiSetup();
     
     // while (WiFi.status() != WL_CONNECTED) {
     //     delay(1000);
@@ -101,14 +101,35 @@ void loop() {
     float distance = getSonar();
 
     // Check if a person is detected
-    if (distance > 0 && distance < 200) { // Adjust threshold for your application
-        if (WiFi.status() != WL_CONNECTED || !client.connected()) {
-            // If Wi-Fi or MQTT is disconnected, log the data to CSV
-            logPersonDetection(true);
-        } else {
-            // Otherwise, log the data directly via MQTT
-            logPersonDetection(false);
+    // if (distance > 0 && distance < 200) { // Adjust threshold for your application
+    //     while (distance != 0)
+    //     {
+    //         if (WiFi.status() != WL_CONNECTED || !client.connected()) {
+    //             // If Wi-Fi or MQTT is disconnected, log the data to CSV
+    //             logPersonDetection(true);
+    //         } else {
+    //             // Otherwise, log the data directly via MQTT
+    //             logPersonDetection(false);
+    //         }
+    //     }
+        
+    // }
+
+    if (distance > 0 && distance < 200) {
+        if (!personDetected) {
+            // Mark as detected
+            personDetected = true;
         }
+    } else if (personDetected && distance == 0) {
+        // Log only when a person was detected and distance returns to 0
+        if (WiFi.status() != WL_CONNECTED || !client.connected()) {
+            logPersonDetection(true); // Log to CSV
+        } else {
+            logPersonDetection(false); // Log via MQTT
+        }
+
+        // Reset the detection flag
+        personDetected = false;
     }
 
     // Attempt to reconnect if disconnected
@@ -277,7 +298,7 @@ void startConfigPortal() {
     WiFi.softAP("ESP32-Config");
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/index.html", "text/html");
+        request->send(SPIFFS, "/wifimanager.html", "text/html");
     });
 
     server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
