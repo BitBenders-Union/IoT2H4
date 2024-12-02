@@ -1,0 +1,158 @@
+{
+        "intents": [
+          {
+            "tag": "greeting",
+            "patterns": [
+              "Hello",
+              "Hi",
+              "Hey",
+              "Good morning",
+              "Good afternoon"
+            ],
+            "responses": [
+              "Hi there!",
+              "Hello! How can I help you today?",
+              "Hey! How can I assist you?"
+            ]
+          },
+          {
+            "tag": "website_info",
+            "patterns": [
+              "Tell me about the website",
+              "What is this project about?",
+              "Can you explain the project?",
+              "What does this website do?",
+              "Tell me more about this site",
+              "What is this project?"
+            ],
+            "responses": [
+              "Projektet går ud på at opsætte en ESP32, som skal kommunikere med forskellige sensorer til indsamling af data. Vi har brugt en ESP-CAM til menneske-detektering samt en ultralydsscanner til afstandsmåling. Derudover er der brugt en temperaturs- og fugtighedsmåler til dataindsamling. Alle data bliver sendt til en MQTT-server, og vi anvender et script til at hente data fra MQTT til en database og videre til denne hjemmeside.",
+              "This project involves setting up an ESP32 that communicates with various sensors to collect data. We've used an ESP-CAM for human detection, along with an ultrasonic scanner for distance measurement. Additionally, we have used a temperature and humidity sensor to gather data. All data is sent to an MQTT server, and we use a script to retrieve data from MQTT to a database, which is then displayed on this website."
+            ]
+          },
+          {
+            "tag": "dietpi_info",
+            "patterns": [
+              "What is DietPi?",
+              "Tell me about DietPi",
+              "What is DietPi used for?",
+              "What is running on DietPi?"
+            ],
+            "responses": [
+              "DietPi is a lightweight operating system designed for single-board computers, like the Raspberry Pi. It is optimized to run on low-resource devices while providing a user-friendly interface and support for a wide range of applications. In this project, DietPi runs on a Raspberry Pi, which is used to collect data from various sensors and display it on the website.",
+              "DietPi is an extremely lightweight, minimalistic operating system designed for single-board computers like the Raspberry Pi. It is ideal for projects like this one where you need an efficient, low-power OS that runs the necessary services (like MQTT) for real-time data collection and display."
+            ]
+          },
+          {
+            "tag": "project_creator",
+            "patterns": [
+              "Who made this project?",
+              "Who are the creators of this project?",
+              "Who created this website?",
+              "Who Created you?",
+              "Who developed this project?",
+              "Who are BitBenders-Union?"
+            ],
+            "responses": [
+              "This project was created by BitBenders-Union.",
+              "The creators of this project are BitBenders-Union.",
+              "BitBenders-Union developed this website and the associated project."
+            ]
+          },
+          {
+            "tag": "temperature_data",
+            "patterns": [
+              "Tell me about the temperature data",
+              "What is the temperature data on the site?",
+              "Can you explain the temperature data?",
+              "How is the temperature data collected?",
+              "What sensors are used to collect the temperature data?",
+              "How accurate is the temperature data?"
+            ],
+            "responses": [
+              "The temperature data on this site is collected using a temperature and humidity sensor that measures the current temperature and humidity levels in the environment. The data is collected in real-time and sent to the website through an MQTT server. The sensor provides accurate readings, and the data is updated continuously to reflect the current conditions.",
+              "Temperature data is gathered by a sensor that measures the environmental temperature. The data is then sent to the MQTT server and displayed on the website in real-time. The accuracy of the temperature readings depends on the quality of the sensor used, but it is generally reliable for this type of project."
+            ]
+          },
+          {
+            "tag": "temperature_sensor_technology",
+            "patterns": [
+              "What kind of temperature sensor is used?",
+              "Tell me more about the temperature sensor",
+              "What technology does the temperature sensor use?",
+              "How does the temperature sensor work?"
+            ],
+            "responses": [
+              "The temperature sensor used in this project is typically a DHT22 or similar digital sensor, which is designed to measure both temperature and humidity. It works by sensing the air around it and providing a digital reading, which is then sent to the Raspberry Pi via GPIO pins. The data is then sent to the MQTT server for real-time updates.",
+              "The project uses a DHT22 or similar temperature and humidity sensor, which uses a digital signal to send accurate temperature and humidity data to the Raspberry Pi. It provides readings by detecting the temperature and moisture in the surrounding air, which is then transmitted to the database for real-time display."
+            ]
+          },
+          {
+            "tag": "project_technology",
+            "patterns": [
+              "What technology is used in this project?",
+              "Tell me about the technology behind this project",
+              "What tools and technologies were used?",
+              "What technologies does the project use?"
+            ],
+            "responses": [
+              "This project uses a combination of technologies to collect and display real-time sensor data. The ESP32 microcontroller communicates with sensors like the ESP-CAM for human detection, ultrasonic scanners for distance measurement, and temperature and humidity sensors. Data is transferred via MQTT to a database, and the website is built using standard web technologies such as HTML, CSS, and JavaScript.",
+              "The project uses ESP32 for sensor communication, MQTT for data transfer, and a combination of various sensors (temperature, humidity, ultrasonic, etc.). The data is displayed on the website in real-time, built using web technologies like HTML, CSS, and JavaScript."
+            ]
+          },
+          {
+            "tag": "mqtt_server",
+            "patterns": [
+              "What is MQTT?",
+              "Tell me about the MQTT server",
+              "What does MQTT do?",
+              "How is data transferred with MQTT?",
+              "Why is MQTT used in this project?"
+            ],
+            "responses": [
+              "MQTT (Message Queuing Telemetry Transport) is a lightweight messaging protocol that is used to transmit data between devices. In this project, MQTT is used to send sensor data from the ESP32 to the Raspberry Pi. It enables real-time data communication and is ideal for IoT applications due to its low bandwidth usage and reliability.",
+              "MQTT is a communication protocol that allows for the transmission of messages between devices in real-time. In this project, it is used to send data from the sensors (e.g., temperature, distance) to the server. MQTT is lightweight and efficient, making it perfect for IoT applications where fast, low-latency communication is important."
+            ]
+          },
+          {
+            "tag": "project_status",
+            "patterns": [
+              "Is this project complete?",
+              "What is the status of this project?",
+              "Is this website fully functional?",
+              "Is the project finished?"
+            ],
+            "responses": [
+              "The project is ongoing. We're constantly improving the functionality and adding new features. Currently, the website is displaying real-time data from the sensors.",
+              "This project is a work in progress. We're regularly adding updates and features to ensure it works efficiently and displays real-time data from the connected sensors."
+            ]
+          },
+          {
+            "tag": "data_update",
+            "patterns": [
+              "How often is the data updated?",
+              "When is the data updated on the website?",
+              "How frequently is the sensor data refreshed?",
+              "Is the data shown on the website real-time?"
+            ],
+            "responses": [
+              "Yes, the data shown on the website is updated in real-time as it is collected by the sensors. The updates are sent immediately to the website using MQTT.",
+              "The data displayed on the website is updated in real-time as soon as it is gathered from the sensors and transmitted via MQTT."
+            ]
+          },
+          {
+            "tag": "goodbye",
+            "patterns": [
+              "Goodbye",
+              "Bye",
+              "See you",
+              "Take care"
+            ],
+            "responses": [
+              "Goodbye! Have a great day!",
+              "See you later!",
+              "Take care! Let me know if you need anything else."
+            ]
+          }
+        ]
+      }      

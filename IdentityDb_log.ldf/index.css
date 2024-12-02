@@ -1,0 +1,131 @@
+/* General Reset */
+body, h1, h2, p, a {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f9;
+    color: #333;
+    padding: 0 2rem;
+}
+
+/* Navbar Styling */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #333;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.navbar .logo {
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+}
+
+.nav-links li {
+    margin: 0 1rem;
+}
+
+.nav-links a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.nav-links a:hover {
+    color: #ffb400;
+}
+
+/* Container Styling */
+.container {
+    padding: 2rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.container h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Description Styling */
+.description {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+/* Section Styling */
+.section {
+    padding: 2rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+/* Icon Styling */
+.icon {
+    display: block;
+    font-size: 3rem;
+    color: #333;
+    margin: 0 auto 1rem;
+}
+
+/* Footer Styling */
+footer {
+    padding: 1rem;
+    text-align: center;
+    background: #333;
+    color: #fff;
+    border-radius: 8px;
+}
+
+footer p {
+    margin: 0;
+}
+
+#chatbot-container {
+    transition: all 0.3s ease;
+}
+#chatbot-container.minimized {
+    width: 50px;
+    height: 50px;
+    bottom: 20px;
+    right: 20px;
+    overflow: hidden;
+    border-radius: 50%;
+    padding: 5px;
+}
+#chatbot-container.minimized #chatbot-header {
+    background: #007bff;
+    text-align: center;
+    padding: 10px;
+    border-radius: 50%;
+}
+#chatbot-container.minimized #chatbot-body {
+    display: none;
+}

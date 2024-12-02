@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DietPi - Coffetop</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">DietPi - Coffetop</div>
+    </nav>
+
+    <div class="container">
+        <h1>Velkommen til BitBenders-Union - DietPi</h1>
+        <div class="description">
+            <p>Projektet går ud på at opsætte en ESP32, som skal kommunikere med forskellige sensorer til indsamling af data...</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-thermometer-half icon"></i> Temperatur & Humidity</h2>
+        <p>
+            <strong>Aktuel temperatur:</strong> <span id="temperature">Loading...</span> °C<br>
+            <strong>Aktuel fugtighed:</strong> <span id="humidity">Loading...</span> %<br>
+            <strong>Aktuel tid:</strong> <span id="time">Loading...</span> %<br>
+        </p>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-users icon"></i> Human Count</h2>
+        <p>
+            <strong>Antal personer i dag:</strong> <span id="today-count">Loading...</span><br>
+            <strong>Samlet antal personer denne uge:</strong> <span id="weekly-count">Loading...</span>
+        </p>
+    </div>
+
+    <!-- Chatbot Container -->
+    <div id="chatbot-container" style="position: fixed; bottom: 20px; right: 20px; width: 300px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 10px; padding: 10px;">
+        <div id="chatbot-header" style="background: #333; color: #fff; padding: 10px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <span>Ask me About the Website!</span>
+            <button id="chatbot-minimize" style="background: none; border: none; color: white; font-size: 16px; cursor: pointer;">−</button>
+        </div>
+        <div id="chatbot-body" style="display: block;">
+            <div id="chatbot-messages" style="height: 200px; overflow-y: auto; margin-bottom: 10px; background: #fff; padding: 10px; border: 1px solid #ccc;"></div>
+            <input id="chatbot-input" type="text" placeholder="Type your message..." style="width: calc(100% - 20px); padding: 5px; border: 1px solid #ccc; border-radius: 5px;" />
+            <button id="chatbot-send" style="width: 100%; margin-top: 5px; background: #007bff; color: white; border: none; border-radius: 5px; padding: 5px;">Send</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 DietPi - BitBenders-Union. Alle rettigheder forbeholdes.</p>
+    </footer>
+
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+
+    <script>
+        // Function to fetch human count data from the Flask server
+        function fetchHumanCount() {
+            fetch("http://192.168.0.153:5001/get_human_count")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.today_count && data.weekly_count) {
+                        // Update the HTML elements with the fetched data
+                        document.getElementById('today-count').innerText = data.today_count;
+                        document.getElementById('weekly-count').innerText = data.weekly_count;
+                    } else {
+                        console.error('Human count data not found', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching human count data:', error);
+                });
+        }
+
+        // Fetch initial human count data on page load
+        fetchHumanCount();
+
+        // Set up a timer to fetch human count data every 60 seconds (60000 ms)
+        setInterval(fetchHumanCount, 10000);
+
+        // Connect to the WebSocket server for other functionalities
+        const socket = io.connect('http://192.168.0.153:5000', {
+            transports: ['websocket']  // Force WebSocket transport
+        });
+
+        // Function to fetch the latest temperature and humidity from the server
+        function fetchLatestData() {
+            fetch("http://192.168.0.153:5001/get_latest_data")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.temperature && data.humidity) {
+                        document.getElementById('temperature').innerText = data.temperature;
+                        document.getElementById('humidity').innerText = data.humidity;
+                        document.getElementById('time').innerText = data.time;
+                    } else {
+                        console.error('Data not found', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching latest data:', error);
+                });
+        }
+
+        // Fetch initial temperature and humidity data on page load
+        fetchLatestData();
+
+        // Set up a timer to fetch temperature and humidity data every 60 seconds (60000 ms)
+        setInterval(fetchLatestData, 30000);
+
+        // Chatbot interaction functionality
+        const minimizeButton = document.getElementById("chatbot-minimize");
+        const chatbotBody = document.getElementById("chatbot-body");
+        const chatbotInput = document.getElementById("chatbot-input");
+        let isMinimized = false;
+
+        minimizeButton.addEventListener("click", () => {
+            if (isMinimized) {
+                chatbotBody.style.display = "block"; // Show chatbot body
+                minimizeButton.textContent = "−";  // Change button to minus
+            } else {
+                chatbotBody.style.display = "none"; // Hide chatbot body
+                minimizeButton.textContent = "+";  // Change button to plus
+            }
+            isMinimized = !isMinimized; // Toggle minimized state
+        });
+
+        // Chatbot interaction functionality
+        document.getElementById("chatbot-send").addEventListener("click", async () => {
+            const input = chatbotInput;
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Display the user's message in the chat
+            const messagesDiv = document.getElementById("chatbot-messages");
+            messagesDiv.innerHTML += `<div><strong>You:</strong> ${message}</div>`;
+
+            // Clear the input box
+            input.value = "";
+
+            // Send the message to the Flask backend for a chatbot response
+            const response = await fetch("http://192.168.0.153:5000/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message })
+            });
+            const data = await response.json();
+            const botResponse = data.response;
+
+            // Display the bot's response
+            messagesDiv.innerHTML += `<div><strong>Bot:</strong> ${botResponse}</div>`;
+        });
+
+        // When the client connects, we can also fetch the initial data from the server
+        socket.on('connect', function() {
+            console.log('Connected to WebSocket server');
+        });
+    </script>
+    
+</body>
+</html>

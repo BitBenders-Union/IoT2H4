@@ -1,0 +1,4 @@
+text,intent,response
+hello,greeting,Hello! How can I help you?
+hi,greeting,Hi there! How can I assist you today?
+what is your name?,name_request,I am your chatbot.
