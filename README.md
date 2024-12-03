@@ -22,8 +22,44 @@ Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor
   - Nginx (Webserver)
   - Flask (Micro web framework)
   - Python 3
-    
-## MQTT Broker Scripts
+
+# **Quickguide til IoT2H4**
+
+## **1. Hardwareopsætning**
+1. Tilslut DHT11-sensoren til det første ESP32-dev board.
+2. Tilslut ultralydssensoren til det andet ESP32-dev board.
+3. Sørg for, at Raspberry Pi 4B er korrekt sat op og tilsluttet netværket.
+
+## **2. Softwareopsætning på Raspberry Pi**
+1. Installer **DietPi OS** på Raspberry Pi.
+2. Installer følgende software via DietPi's Software Optimized:
+   - **Mosquitto** (MQTT broker)
+   - **PostgreSQL** (Database)
+   - **Nginx** (Webserver)
+   - **Python 3** og **Flask** (Micro web framework)
+3. Opret databaser og tabeller i PostgreSQL:
+   - `DHT-11` database med en `sensor_data` tabel (felter: `temperature`, `humidity`, `time`).
+   - `SuperSonic` database med en `super_sonic` tabel (felter: `time`, `person`).
+
+## **3. Deployment af Scripts**
+1. Kopier følgende Python-scripts til Raspberry Pi:
+   - `dht-11-mqtt.py` til håndtering af DHT11-sensorens data.
+   - `ultraSonic-mqtt.py` til håndtering af ultralydssensorens data.
+     
+## **4. Deployment af Scripts som Services**
+1. Opret systemd-services for de to scripts, så de starter automatisk ved opstart:
+   - Lav en servicefil til hvert script (`dht-11-mqtt.service` og `ultraSonic-mqtt.service`).
+   - Angiv scriptets sti og sørg for, at det genstarter automatisk ved fejl.
+
+2. Aktiver og start tjenesterne:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable dht-11-mqtt.service
+   sudo systemctl enable ultraSonic-mqtt.service
+   sudo systemctl start dht-11-mqtt.service
+   sudo systemctl start ultraSonic-mqtt.service
+
+# MQTT Broker Scripts
 Vi har 2 scripts til opsætning og håndtering af vores MQTT broker:
 - **dht-11-mqtt.py**
 Dette script lytter på MQTT-topikken `home/dht`, modtager JSON-beskeder med temperatur, luftfugtighed og tidsstempel, og indsætter dataene i en PostgreSQL-database.
