@@ -59,6 +59,12 @@ Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor
    sudo systemctl start dht-11-mqtt.service
    sudo systemctl start ultraSonic-mqtt.service
 
+## **5. Opsætning af Webserver**
+   - Kopier filerne fra vores repository (mappe: `ngnix`) til Nginx's serveringsmappe på Raspberry Pi.
+   - Genstart webserveren
+   
+
+
 # MQTT Broker Scripts
 Vi har 2 scripts til opsætning og håndtering af vores MQTT broker:
 - **dht-11-mqtt.py**
