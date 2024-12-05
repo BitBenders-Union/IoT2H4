@@ -12,7 +12,7 @@ TABLE_NAME = "rfid_data"  # Ensure this table exists
 # MQTT broker parameters
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = "ESP32/door_operations"
+MQTT_TOPIC = "esp32/door_operations"
 
 # Connect to PostgreSQL
 def connect_db():
@@ -26,18 +26,18 @@ def connect_db():
         print("Connected to PostgreSQL database")
         return connection
     except Exception as e:
-        print(f"Error connecting to PostgreSQL: {e}")
+        print(f"Error connecting to PostgreSQL: {e}") 
         exit(1)
 
 # Insert data into PostgreSQL
-def insert_data(connection, count, timestamp):
+def insert_data(connection, timestamp, door_event):
     try:
         cursor = connection.cursor()
         query = f"""
-        INSERT INTO {TABLE_NAME} (count, time)
+        INSERT INTO {TABLE_NAME} (time, door_event)
         VALUES (%s, %s);
         """
-        cursor.execute(query, (count, timestamp))
+        cursor.execute(query, (door_event, timestamp))
         connection.commit()
         print("Data inserted successfully")
     except Exception as e:
@@ -57,11 +57,11 @@ def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
         print(f"Received message: {payload}")
-        count = payload.get("count")
+        door_event = payload.get("door_event")
         timestamp = payload.get("time")
 
-        if count and timestamp:
-            insert_data(userdata["db_connection"], count, timestamp)
+        if door_event and timestamp:
+            insert_data(userdata["db_connection"], door_event, timestamp)
         else:
             print("Invalid data received")
     except Exception as e:
