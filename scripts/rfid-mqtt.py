@@ -4,15 +4,15 @@ import json
 
 # PostgreSQL connection parameters
 DB_HOST = "localhost"
-DB_NAME = "DS18B20"
+DB_NAME = "RFID"
 DB_USER = "mqtt-broker"
 DB_PASSWORD = "dietpi"
-TABLE_NAME = "temperature_data"  # Ensure this table exists
+TABLE_NAME = "rfid_data"  # Ensure this table exists
 
 # MQTT broker parameters
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = "home/ds18b20"
+MQTT_TOPIC = "ESP32/door_operations"
 
 # Connect to PostgreSQL
 def connect_db():
@@ -30,14 +30,14 @@ def connect_db():
         exit(1)
 
 # Insert data into PostgreSQL
-def insert_data(connection, temperature, timestamp):
+def insert_data(connection, count, timestamp):
     try:
         cursor = connection.cursor()
         query = f"""
-        INSERT INTO {TABLE_NAME} (temperature, time)
+        INSERT INTO {TABLE_NAME} (count, time)
         VALUES (%s, %s);
         """
-        cursor.execute(query, (temperature, timestamp))
+        cursor.execute(query, (count, timestamp))
         connection.commit()
         print("Data inserted successfully")
     except Exception as e:
@@ -48,7 +48,7 @@ def insert_data(connection, temperature, timestamp):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected to MQTT broker")
-        client.subscribe(MQTT_TOPIC, qos=1)
+        client.subscribe(MQTT_TOPIC)
     else:
         print(f"Failed to connect, return code {rc}")
 
@@ -57,11 +57,11 @@ def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
         print(f"Received message: {payload}")
-        temperature = payload.get("temperature")
+        count = payload.get("count")
         timestamp = payload.get("time")
 
-        if temperature and timestamp:
-            insert_data(userdata["db_connection"], temperature, timestamp)
+        if count and timestamp:
+            insert_data(userdata["db_connection"], count, timestamp)
         else:
             print("Invalid data received")
     except Exception as e:
