@@ -82,11 +82,18 @@ Dette script lytter på MQTT-topikken `esp32/people_counter`, modtager JSON-besk
 
 ## Kildekode DHT11 og ultrasonic sensors
 - [DHT11 - Kode](https://github.com/BitBenders-Union/IoT2H4/blob/main/DHT11%20-%20Standalone/src/main.cpp)
+- [Ds18B20 - kode](https://github.com/BitBenders-Union/IoT2H4/blob/main/DS18B20_Sensor/src/main.cpp)
 - [UltraSonic - kode](https://github.com/BitBenders-Union/IoT2H4/blob/main/SuperSonice/src/main.cpp)
+- [CardReader - kode](https://github.com/BitBenders-Union/IoT2H4/blob/main/CardReader/src/main.cpp)
+
 
 ## kredsløbsdiagram 
 - [DHT11 - diagram](https://github.com/BitBenders-Union/IoT2H4/blob/main/Doc/DHT11Sensor_bb.png)
+- [DS18B20 - diagram](https://github.com/BitBenders-Union/IoT2H4/blob/main/Doc/Ds18b20.png)
 - [UltraSonic - diagram](https://github.com/BitBenders-Union/IoT2H4/blob/main/Doc/ultraSonicSensor_bb.png)
+- [CardReader - diagram](https://github.com/BitBenders-Union/IoT2H4/blob/main/Doc/Cardreader_bb.png)
+
+
 
 
 
