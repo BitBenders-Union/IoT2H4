@@ -4,16 +4,28 @@
 #include "time.h"
 #include "FS.h"
 #include "SPIFFS.h"
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
 
 #define trigPin 13
 #define echoPin 14
-#define MAX_DISTANCE 700
+#define MAX_DISTANCE 150
+
+AsyncWebServer server(80);
 
 #define uS_TO_S_FACTOR 1000000  // Conversion factor for microseconds to seconds
 
 // Wi-Fi credentials
-const char* ssid = "E308";
-const char* password = "98806829";
+const char* PARAM_INPUT_1 = "ssid";
+const char* PARAM_INPUT_2 = "pass";
+
+// const char* ssid = "E308";
+// const char* password = "98806829";
+String ssid;
+String password;
+
+//Path to saved wifi credentials
+const char* WIFI_CREDENTIALS_FILE  = "/wifi_credentials.txt";   
 
 // MQTT settings
 const char* mqttServer = "192.168.0.153";
@@ -21,6 +33,8 @@ const int mqttPort = 1883;
 const char* mqttTopic = "esp32/people_counter";
 const char* mqttUser = "mosquitto";   // MQTT username
 const char* mqttPassword = "dietpi";  // MQTT password
+
+bool personDetected = false;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -37,10 +51,13 @@ struct tm timeinfo;
 
 float getSonar();
 void checkAndSleep();
-void logPersonDetection(bool isSaveToCSV = false);
+void logPersonDetectionCSV();
+void logPersonDetectionMQTT();
 void sendCSVData();
 bool connectToMQTT();
 void saveToCSV(String timestamp);
+void wiFiSetup();
+void startConfigPortal();
 
 void setup() {
     Serial.begin(115200);
@@ -54,16 +71,18 @@ void setup() {
     }
     Serial.println("SPIFFS mounted successfully.");
 
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(1000);
-        Serial.println("Connecting to WiFi...");
-    }
-    Serial.println("WiFi connected.");
+    // WiFi.begin(ssid, password)
+    wiFiSetup();
+    
+    // while (WiFi.status() != WL_CONNECTED) {
+    //     delay(1000);
+    //     Serial.println("Connecting to WiFi...");
+    // }
+    // Serial.println("WiFi connected.");
 
-    // Print the ESP32's IP address
-    Serial.print("ESP32 IP Address: ");
-    Serial.println(WiFi.localIP());
+    // // Print the ESP32's IP address
+    // Serial.print("ESP32 IP Address: ");
+    // Serial.println(WiFi.localIP());
 
     // Synchronize time using NTP
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -82,23 +101,62 @@ void setup() {
 void loop() {
     float distance = getSonar();
 
-    // Check if a person is detected
-    if (distance > 0 && distance < 200) { // Adjust threshold for your application
-        if (WiFi.status() != WL_CONNECTED || !client.connected()) {
-            // If Wi-Fi or MQTT is disconnected, log the data to CSV
-            logPersonDetection(true);
-        } else {
-            // Otherwise, log the data directly via MQTT
-            logPersonDetection(false);
+    // // Check if a person is detected
+    // if (distance > 0 && distance < 200) { // Adjust threshold for your application
+
+    //         // float newdistance = getSonar();
+    //         if (distance < 2) {
+    //             Serial.print("Distance: ");
+    //             Serial.println(distance);
+    //             // personDetected = false;
+    //             if (!connectToMQTT()) {
+    //                 // If Wi-Fi or MQTT is disconnected, log the data to CSV
+    //                 logPersonDetectionCSV();
+
+    //             } else {
+    //                 // Otherwise, log the data directly via MQTT
+    //                 logPersonDetectionMQTT();
+    //             }
+    //         }
+        
+        
+    // }
+
+    if (distance > 2 && distance < MAX_DISTANCE) {
+        if (!personDetected) {
+            // Mark as detected
+            personDetected = true;
+            Serial.println("Person detected!");
         }
+        Serial.print("Distance: ");
+        Serial.println(distance);
     }
+    
+    if (personDetected && distance < 2) {
+        Serial.println("Person left!");
+        Serial.print("Distance: ");
+        Serial.println(distance);
+        // Log only when a person was detected and distance returns to 0
+        if (!connectToMQTT()) {
+            personDetected = false;
+            logPersonDetectionCSV(); // Log to CSV
+        } else {
+            personDetected = false;
+            logPersonDetectionMQTT(); // Log via MQTT
+        }
 
-    // Attempt to reconnect if disconnected
-    if (WiFi.status() == WL_CONNECTED && connectToMQTT()) {
-        sendCSVData(); // Send any saved data when connection is restored
+        // Reset the detection flag
+        personDetected = false;
     }
+    // Serial.print("Distance: ");
+    // Serial.println(distance);
 
-    delay(1000);
+    // // Attempt to reconnect if disconnected
+    // if (WiFi.status() == WL_CONNECTED && connectToMQTT()) {
+    //     sendCSVData(); // Send any saved data when connection is restored
+    // }
+
+    delay(100);
     checkAndSleep();
 }
 
@@ -116,22 +174,23 @@ float getSonar() {
     return distance;
 }
 
-void logPersonDetection(bool isSaveToCSV) {
+void logPersonDetectionCSV() {
     if (getLocalTime(&timeinfo)) {
         char timestamp[20];
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-        if (isSaveToCSV) {
             // Save the data to CSV
-            saveToCSV(String(timestamp));
-        } else {
-            // Send MQTT message
-            String payload = String("{\"time\":\"") + timestamp + "\",\"persons\":1}";
-            if (connectToMQTT()) {
-                client.publish(mqttTopic, payload.c_str());
-                Serial.println("MQTT message sent: " + payload);
-            }
-        }
+        saveToCSV(String(timestamp));
+    }
+}
+
+void logPersonDetectionMQTT() {
+    if (getLocalTime(&timeinfo)) {
+        char timestamp[20];
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        // Send MQTT message
+        String payload = String("{\"time\":\"") + timestamp + "\",\"persons\":1}";
+        client.publish(mqttTopic, payload.c_str());
+        Serial.println("MQTT message sent: " + payload);
     }
 }
 
@@ -197,7 +256,7 @@ void checkAndSleep() {
     }
 
     // Print current time for debugging
-    Serial.printf("Current time: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    // Serial.printf("Current time: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 
     // Check if it's time to sleep
     if (timeinfo.tm_hour >= 17 || timeinfo.tm_hour < 6) {
@@ -218,4 +277,81 @@ void checkAndSleep() {
         esp_sleep_enable_timer_wakeup((uint64_t)secondsToSleep * uS_TO_S_FACTOR);
         esp_deep_sleep_start();
     }
+}
+
+void wiFiSetup() {
+    // Read WiFi credentials from SPIFFS
+    File file = SPIFFS.open(WIFI_CREDENTIALS_FILE, FILE_READ);
+    if (file) {
+        ssid = file.readStringUntil('\n');
+        Serial.println("SSID: " + ssid);
+        password = file.readStringUntil('\n');
+        Serial.println("Password: " + password);
+        ssid.trim();
+        password.trim();
+        file.close();
+    }
+    else {
+        Serial.println("No WiFi credentials found.");
+        startConfigPortal();
+    }
+
+    if (ssid.length() > 0) {
+        WiFi.begin(ssid.c_str(), password.c_str());
+
+        // Wait for connection
+        int attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+            delay(1000);
+            Serial.println("Connecting to WiFi...");
+            attempts++;
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("WiFi connected.");
+            Serial.print("IP Address: ");
+            Serial.println(WiFi.localIP());
+            return;
+        }
+    }
+
+    // If Wi-Fi not connected, start config portal
+    // startConfigPortal();
+}
+
+void startConfigPortal() {
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP("SuperSonic-Config");
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/wifimanager.html", "text/html");
+    });
+
+    server.on("/", HTTP_POST, [](AsyncWebServerRequest *request){
+        String newSSID, newPassword;
+        if (request->hasParam("ssid", true)) {
+            newSSID = request->getParam("ssid", true)->value();
+        }
+        if (request->hasParam("password", true)) {
+            newPassword = request->getParam("password", true)->value();
+        }
+
+        File file = SPIFFS.open(WIFI_CREDENTIALS_FILE, FILE_WRITE);
+        if (file) {
+            file.println(newSSID);
+            Serial.println("SSID: " + newSSID);
+            file.println(newPassword);
+            Serial.println("Password: " + newPassword);
+            file.close();
+            request->send(200, "text/plain", "Credentials saved. ESP32 will restart.");
+            delay(1000);
+            ESP.restart();
+        } else {
+            request->send(500, "text/plain", "Failed to save credentials");
+        }
+    });
+
+    server.begin();
+    Serial.println("Configuration portal started");
+    Serial.println("Connect to ESP32-Config and visit 192.168.4.1");
 }
