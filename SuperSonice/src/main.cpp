@@ -9,7 +9,7 @@
 
 #define trigPin 13
 #define echoPin 14
-#define MAX_DISTANCE 700
+#define MAX_DISTANCE 150
 
 AsyncWebServer server(80);
 
@@ -51,7 +51,8 @@ struct tm timeinfo;
 
 float getSonar();
 void checkAndSleep();
-void logPersonDetection(bool isSaveToCSV = false);
+void logPersonDetectionCSV();
+void logPersonDetectionMQTT();
 void sendCSVData();
 bool connectToMQTT();
 void saveToCSV(String timestamp);
@@ -100,44 +101,62 @@ void setup() {
 void loop() {
     float distance = getSonar();
 
-    // Check if a person is detected
+    // // Check if a person is detected
     // if (distance > 0 && distance < 200) { // Adjust threshold for your application
-    //     while (distance != 0)
-    //     {
-    //         if (WiFi.status() != WL_CONNECTED || !client.connected()) {
-    //             // If Wi-Fi or MQTT is disconnected, log the data to CSV
-    //             logPersonDetection(true);
-    //         } else {
-    //             // Otherwise, log the data directly via MQTT
-    //             logPersonDetection(false);
+
+    //         // float newdistance = getSonar();
+    //         if (distance < 2) {
+    //             Serial.print("Distance: ");
+    //             Serial.println(distance);
+    //             // personDetected = false;
+    //             if (!connectToMQTT()) {
+    //                 // If Wi-Fi or MQTT is disconnected, log the data to CSV
+    //                 logPersonDetectionCSV();
+
+    //             } else {
+    //                 // Otherwise, log the data directly via MQTT
+    //                 logPersonDetectionMQTT();
+    //             }
     //         }
-    //     }
+        
         
     // }
 
-    if (distance > 0 && distance < 200) {
+    if (distance > 2 && distance < MAX_DISTANCE) {
         if (!personDetected) {
             // Mark as detected
             personDetected = true;
+            Serial.println("Person detected!");
         }
-    } else if (personDetected && distance == 0) {
+        Serial.print("Distance: ");
+        Serial.println(distance);
+    }
+    
+    if (personDetected && distance < 2) {
+        Serial.println("Person left!");
+        Serial.print("Distance: ");
+        Serial.println(distance);
         // Log only when a person was detected and distance returns to 0
-        if (WiFi.status() != WL_CONNECTED || !client.connected()) {
-            logPersonDetection(true); // Log to CSV
+        if (!connectToMQTT()) {
+            personDetected = false;
+            logPersonDetectionCSV(); // Log to CSV
         } else {
-            logPersonDetection(false); // Log via MQTT
+            personDetected = false;
+            logPersonDetectionMQTT(); // Log via MQTT
         }
 
         // Reset the detection flag
         personDetected = false;
     }
+    // Serial.print("Distance: ");
+    // Serial.println(distance);
 
-    // Attempt to reconnect if disconnected
-    if (WiFi.status() == WL_CONNECTED && connectToMQTT()) {
-        sendCSVData(); // Send any saved data when connection is restored
-    }
+    // // Attempt to reconnect if disconnected
+    // if (WiFi.status() == WL_CONNECTED && connectToMQTT()) {
+    //     sendCSVData(); // Send any saved data when connection is restored
+    // }
 
-    delay(1000);
+    delay(100);
     checkAndSleep();
 }
 
@@ -155,22 +174,23 @@ float getSonar() {
     return distance;
 }
 
-void logPersonDetection(bool isSaveToCSV) {
+void logPersonDetectionCSV() {
     if (getLocalTime(&timeinfo)) {
         char timestamp[20];
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-        if (isSaveToCSV) {
             // Save the data to CSV
-            saveToCSV(String(timestamp));
-        } else {
-            // Send MQTT message
-            String payload = String("{\"time\":\"") + timestamp + "\",\"persons\":1}";
-            if (connectToMQTT()) {
-                client.publish(mqttTopic, payload.c_str());
-                Serial.println("MQTT message sent: " + payload);
-            }
-        }
+        saveToCSV(String(timestamp));
+    }
+}
+
+void logPersonDetectionMQTT() {
+    if (getLocalTime(&timeinfo)) {
+        char timestamp[20];
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        // Send MQTT message
+        String payload = String("{\"time\":\"") + timestamp + "\",\"persons\":1}";
+        client.publish(mqttTopic, payload.c_str());
+        Serial.println("MQTT message sent: " + payload);
     }
 }
 
@@ -236,7 +256,7 @@ void checkAndSleep() {
     }
 
     // Print current time for debugging
-    Serial.printf("Current time: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    // Serial.printf("Current time: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 
     // Check if it's time to sleep
     if (timeinfo.tm_hour >= 17 || timeinfo.tm_hour < 6) {
@@ -264,10 +284,16 @@ void wiFiSetup() {
     File file = SPIFFS.open(WIFI_CREDENTIALS_FILE, FILE_READ);
     if (file) {
         ssid = file.readStringUntil('\n');
+        Serial.println("SSID: " + ssid);
         password = file.readStringUntil('\n');
+        Serial.println("Password: " + password);
         ssid.trim();
         password.trim();
         file.close();
+    }
+    else {
+        Serial.println("No WiFi credentials found.");
+        startConfigPortal();
     }
 
     if (ssid.length() > 0) {
@@ -290,18 +316,18 @@ void wiFiSetup() {
     }
 
     // If Wi-Fi not connected, start config portal
-    startConfigPortal();
+    // startConfigPortal();
 }
 
 void startConfigPortal() {
     WiFi.mode(WIFI_AP);
-    WiFi.softAP("ESP32-Config");
+    WiFi.softAP("SuperSonic-Config");
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/wifimanager.html", "text/html");
     });
 
-    server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
+    server.on("/", HTTP_POST, [](AsyncWebServerRequest *request){
         String newSSID, newPassword;
         if (request->hasParam("ssid", true)) {
             newSSID = request->getParam("ssid", true)->value();
@@ -313,7 +339,9 @@ void startConfigPortal() {
         File file = SPIFFS.open(WIFI_CREDENTIALS_FILE, FILE_WRITE);
         if (file) {
             file.println(newSSID);
+            Serial.println("SSID: " + newSSID);
             file.println(newPassword);
+            Serial.println("Password: " + newPassword);
             file.close();
             request->send(200, "text/plain", "Credentials saved. ESP32 will restart.");
             delay(1000);
