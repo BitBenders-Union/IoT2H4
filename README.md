@@ -43,25 +43,34 @@ Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor
    - **Python 3** og **Flask** (Micro web framework)
 3. Opret databaser og tabeller i PostgreSQL:
    - `DHT-11` database med en `sensor_data` tabel (felter: `temperature`, `humidity`, `time`).
+   - `DS18B20` database med en `temperature_data` tabel (felter: `temperature`, `time`).
    - `SuperSonic` database med en `super_sonic` tabel (felter: `time`, `person`).
+   - `RFID` database med en `rfid_data` tabel (felter: `time`, `door_event`).  
+
 
 ## **3. Deployment af Scripts**
 1. Kopier følgende Python-scripts til Raspberry Pi:
    - `dht-11-mqtt.py` til håndtering af DHT11-sensorens data.
+   - `ds18b20-mqtt.py` til håndtering af DS18B20 data.
    - `ultraSonic-mqtt.py` til håndtering af ultralydssensorens data.
+   - `rfid-mqtt.py` til håndtering af RFID sensoren data.
      
 ## **4. Deployment af Scripts som Services**
 1. Opret systemd-services for de to scripts, så de starter automatisk ved opstart:
-   - Lav en servicefil til hvert script (`dht-11-mqtt.service` og `ultraSonic-mqtt.service`).
+   - Lav en servicefil til hvert script.
    - Angiv scriptets sti og sørg for, at det genstarter automatisk ved fejl.
 
 2. Aktiver og start tjenesterne:
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable dht-11-mqtt.service
+   sudo systemctl enable ds18b20-mqtt.service
    sudo systemctl enable ultraSonic-mqtt.service
+   sudo systemctl enable cardReader-mqtt.service
    sudo systemctl start dht-11-mqtt.service
+   sudo systemctl start ds18b20-mqtt.service
    sudo systemctl start ultraSonic-mqtt.service
+   sudo systemctl start cardReader-mqtt.service
 
 ## **5. Opsætning af Webserver**
    - Kopier filerne fra vores repository (mappe: `ngnix`) til Nginx's serveringsmappe på Raspberry Pi.
@@ -70,19 +79,34 @@ Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor
 
 
 # MQTT Broker Scripts
-Vi har 2 scripts til opsætning og håndtering af vores MQTT broker:
-- **dht-11-mqtt.py**
-Dette script lytter på MQTT-topikken `home/dht`, modtager JSON-beskeder med temperatur, luftfugtighed og tidsstempel, og indsætter dataene i en PostgreSQL-database.
+Vi har 4 scripts til opsætning og håndtering af vores MQTT broker:
+
+- **dht-11-mqtt.py**  
+  Dette script lytter på MQTT-topikken `home/dht`, modtager JSON-beskeder med temperatur, luftfugtighed og tidsstempel, og indsætter dataene i en PostgreSQL-database.
 
   - **Funktion**: Modtager DHT-11 sensor data (temperatur, luftfugtighed) via MQTT og gemmer det i PostgreSQL.
   - **Fejlbehandling**: Håndterer forbindelses- og indsættelsesfejl.
-   Forbinder mqtt broker til vores database
 
-- **ultraSonic-mqtt.py**
-Dette script lytter på MQTT-topikken `esp32/people_counter`, modtager JSON-beskeder og indsætter data (tidspunkt og antal personer) i en PostgreSQL-database. Det bruger `paho.mqtt` til MQTT-forbindelse og `psycopg2` til databaseforbindelse.
+- **ds18b20-mqtt.py**  
+  Dette script lytter på MQTT-topikken `home/ds18b20`, modtager JSON-beskeder med temperatur og tidsstempel, og indsætter dataene i en PostgreSQL-database.
+
+  - **Funktion**: Modtager DS18B20-sensor data (temperatur) via MQTT og gemmer det i PostgreSQL.
+  - **Fejlbehandling**: Håndterer forbindelses- og indsættelsesfejl.
+
+- **ultraSonic-mqtt.py**  
+  Dette script lytter på MQTT-topikken `esp32/people_counter`, modtager JSON-beskeder og indsætter data (tidspunkt og antal personer) i en PostgreSQL-database. Det bruger `paho.mqtt` til MQTT-forbindelse og `psycopg2` til databaseforbindelse.
 
   - **Funktion**: Modtager data via MQTT og gemmer det i PostgreSQL.
   - **Fejlbehandling**: Håndterer forbindelses- og indsættelsesfejl.
+
+- **rfid-mqtt.py**  
+  Dette script lytter på MQTT-topikken `esp32/door_operations`, modtager JSON-beskeder og indsætter data (tidspunkt og hændelse) i en PostgreSQL-database.
+
+  - **Funktion**: Modtager RFID-data via MQTT og gemmer hændelser (f.eks. dør åbnet/lukket) i PostgreSQL.
+  - **Fejlbehandling**: Håndterer forbindelses- og indsættelsesfejl.
+
+
+
 
 ## Kildekode DHT11 og ultrasonic sensors
 - [DHT11 - Kode](https://github.com/BitBenders-Union/IoT2H4/blob/main/DHT11%20-%20Standalone/src/main.cpp)
