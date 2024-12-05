@@ -42,6 +42,8 @@ void reconnect();
 String getFormattedDateTime();
 bool WriteDataToCSV(String data);
 void PostDataToServerFromFile();
+void resetAPMode();
+void IRAM_ATTR ISR_EnableAccessPointMode();
 
 const char *mqtt_server = "192.168.0.153"; // Raspberry Pi IP
 const int mqtt_port = 1883;                // Default MQTT port
@@ -60,10 +62,17 @@ const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;     // Copenhagen time zone (UTC+1)
 const int daylightOffset_sec = 3600; // Daylight saving time (UTC+2 during summer)
 
+RTC_DATA_ATTR bool triggerAPMode = false;
+
 void setup()
 {
     Serial.begin(115200);
     initLittleFS();
+
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0)
+    {
+        resetAPMode();
+    }
 
     // Load saved Wi-Fi credentials
     ssid = readFile(LittleFS, ssidPath);
@@ -76,7 +85,7 @@ void setup()
     sensor_t sensor;
     dht.temperature().getSensor(&sensor);
     dht.humidity().getSensor(&sensor);
-    delayMS = 60000;  // Set a delay for DHT readings
+    delayMS = 60000; // Set a delay for DHT readings
 
     if (!initWiFi())
     {
@@ -91,10 +100,21 @@ void setup()
 
     // Init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW); // Wake on LOW signal
+
+    // Configure the timer as a wake-up source
+    esp_sleep_enable_timer_wakeup(60 * 1000000); // 60 seconds in microseconds
+
+    attachInterrupt(digitalPinToInterrupt(0), ISR_EnableAccessPointMode, LOW);
 }
 
 void loop()
 {
+    if (triggerAPMode)
+    {
+        resetAPMode();
+    }
     // If there is data to send from file, do so
     if (dataInFile)
     {
@@ -161,9 +181,12 @@ void loop()
         Serial.println("Failed to send data to MQTT broker");
     }
 
+    // disconnect from mqtt broker
+    client.disconnect();
+
     // Put ESP32 to deep sleep for 1 minute (60 seconds)
     Serial.println("Going to sleep for 60 seconds...");
-    esp_deep_sleep(60 * 1000000); // Sleep for 60 seconds (1 minute)
+    esp_deep_sleep_start();
 }
 
 // Initialize LittleFS
@@ -368,4 +391,21 @@ void PostDataToServerFromFile()
         }
     }
     file.close();
+}
+
+void resetAPMode()
+{
+    triggerAPMode = false;
+    // delete ssid file.
+    LittleFS.remove(ssidPath);
+    LittleFS.remove(passPath);
+    LittleFS.remove(mqttPath);
+
+    // restart the device
+    ESP.restart();
+}
+
+void IRAM_ATTR ISR_EnableAccessPointMode()
+{
+    triggerAPMode = true;
 }
