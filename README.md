@@ -1,7 +1,7 @@
 # IoT2H4
 
 ## Beskrivelse:
-Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor data fra sensorer (som temperaturmålinger og personer tæller) sendes via MQTT-protokollen og gemmes i en PostgreSQL-database for videre analyse eller præsentation.
+Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor data fra sensorer (som temperaturmålinger, personer tæller og dør "events") sendes via MQTT-protokollen og gemmes i en PostgreSQL-database for videre analyse eller præsentation.
 
 ## Gruppe
 - Jonas
