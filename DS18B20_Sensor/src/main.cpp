@@ -92,6 +92,9 @@ void loop()
     // If there is data to send from file, do so
     if (dataInFile)
     {
+        //Try commenting out the PostDataToServerFromFile function in the second code and see if the MQTT connection works consistently.
+        //If commenting out the function resolves the issue, consider optimizing the file processing or implementing a mechanism to send data in smaller chunks.
+        
         PostDataToServerFromFile();
     }
 
@@ -127,7 +130,7 @@ void loop()
 
     // Create JSON payload to send
     String payload = "{\"temperature\": " + temperature +
-                     ", \"time\": \"" + currentTime + "\"}";
+                    ", \"time\": \"" + currentTime + "\"}";
 
     // If Wi-Fi is not connected, write data to CSV
     if (noMqtt)
@@ -146,7 +149,10 @@ void loop()
     {
         Serial.println("Failed to send data to MQTT broker");
     }
-
+    //Disconnecting mqtt
+    Serial.println("Disconncting mqtt..");
+    client.disconnect();
+    delay(500);
     // Put ESP32 to deep sleep for 1 minute (60 seconds)
     Serial.println("Going to sleep for 60 seconds...");
     esp_deep_sleep(60 * 1000000); // Sleep for 60 seconds (1 minute)
@@ -348,7 +354,7 @@ void PostDataToServerFromFile()
         if (!line.startsWith("Temperature")) // Skip header line
         {
             String payload = "{\"temperature\": " + line.substring(0, line.indexOf(',')) +
-                             ", \"time\": \"" + line.substring(line.indexOf(',') + 1) + "\"}";
+                            ", \"time\": \"" + line.substring(line.indexOf(',') + 1) + "\"}";
             if (client.publish("home/ds18b20", payload.c_str()))
             {
                 Serial.println("Data sent: " + payload);
