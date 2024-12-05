@@ -10,9 +10,11 @@ Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor
 - Dennis
 
 ## Komponenter
-- 2 stk: ESP32 – Dev board
+- 4 stk: ESP32 – Dev board
 - 1 stk: DHT11 – Temperaturmåler
+- 1 stk: DS18B20 - Temperaturmåler
 - 1 stk: UltraSonic sensor
+- 1 stk: RFID - RC522 sensor
 - 1 stk: Raspberry Pi 4B
 
 ## Software på Pi
@@ -27,8 +29,10 @@ Målet med projektet er at demonstrere, hvordan man kan opsætte et system, hvor
 
 ## **1. Hardwareopsætning**
 1. Tilslut DHT11-sensoren til det første ESP32-dev board.
-2. Tilslut ultralydssensoren til det andet ESP32-dev board.
-3. Sørg for, at Raspberry Pi 4B er korrekt sat op og tilsluttet netværket.
+2. Tilslut DS18B20 til det andet ESP32-dev board.
+3. Tilslut ultralydssensoren til det trejde ESP32-dev board.
+4. Tilslut RFID-RC522 sensoren til det fjere ESP32-dev board.
+5. Sørg for, at Raspberry Pi 4B er korrekt sat op og tilsluttet netværket.
 
 ## **2. Softwareopsætning på Raspberry Pi**
 1. Installer **DietPi OS** på Raspberry Pi.
