@@ -63,6 +63,7 @@ const long gmtOffset_sec = 3600;     // Copenhagen time zone (UTC+1)
 const int daylightOffset_sec = 3600; // Daylight saving time (UTC+2 during summer)
 
 RTC_DATA_ATTR bool triggerAPMode = false;
+RTC_DATA_ATTR bool inAPmode = false;
 
 void setup()
 {
@@ -96,7 +97,7 @@ void setup()
     client.setServer(mqtt_server, mqtt_port);
 
     // Initial connection to MQTT
-    reconnect();
+    // reconnect();
 
     // Init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -111,6 +112,14 @@ void setup()
 
 void loop()
 {
+    if(inAPmode)
+    {
+        while (true)
+        {
+            delay(1000);
+        }
+        
+    }
     if (triggerAPMode)
     {
         resetAPMode();
@@ -280,6 +289,7 @@ bool initWiFi()
 // Configure the server to serve the correct page
 void setupServer()
 {
+    inAPmode = true;
     WiFi.softAP("ESP-WIFI-MANAGER");
     IPAddress IP = WiFi.softAPIP();
     Serial.print("AP IP address: ");
